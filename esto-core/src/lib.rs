@@ -1,5 +1,5 @@
 //!
-#[warn(
+#![warn(
     missing_docs,
     missing_debug_implementations,
     missing_copy_implementations,
@@ -11,7 +11,7 @@
     unused_import_braces,
     unused_qualifications
 )]
-mod storage;
+pub mod storage;
 
 /// Retrieve the version number for esto-core as a string
 pub fn get_version() -> &'static str {

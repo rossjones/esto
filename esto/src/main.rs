@@ -12,8 +12,11 @@
     unused_qualifications
 )]
 
-use esto_core::get_version;
+use esto_core::{get_version, storage::Storage};
+use std::path::PathBuf;
 
 fn main() {
     println!("Esto, version: {}!", get_version());
+
+    let _s = Storage::new(PathBuf::from("/tmp/test_i"), PathBuf::from("/tmp/test_d"));
 }
