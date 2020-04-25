@@ -8,3 +8,5 @@ edition = "2018"
 
 [dependencies]
 rocksdb = "0.14.0"
+test_dir = "0.1.0"
+uuid = { version = "0.8", features = ["serde", "v4"] }
