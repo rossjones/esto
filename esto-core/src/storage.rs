@@ -91,6 +91,7 @@ impl Storage {
         let mut db_options = Options::default();
         db_options.create_missing_column_families(true);
         db_options.create_if_missing(true);
+        db_options.set_keep_log_file_num(10);
 
         Storage {
             indexes: DB::open_cf_descriptors(&db_options, &index_path, vec![idx_cf]).unwrap(),
