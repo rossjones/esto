@@ -21,7 +21,6 @@
 //! let new_idx = Index::decode(idx.id, &encoded);
 //! assert!(idx.records == new_idx.records)
 //! ```
-use bincode;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
