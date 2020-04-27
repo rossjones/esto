@@ -31,7 +31,7 @@ use std::time::{Duration, SystemTime};
 // TODO: Switch to Logical clocks ftw
 type RecordLink = (Uuid, Duration);
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 /// An index for an entity
 pub struct Index {
     /// The identifier for the entity being found
