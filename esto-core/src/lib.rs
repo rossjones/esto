@@ -12,6 +12,7 @@
     unused_qualifications
 )]
 pub mod index;
+pub mod record;
 pub mod storage;
 
 /// Retrieve the version number for esto-core as a string
