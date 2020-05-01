@@ -49,9 +49,10 @@
 //! shard the IDs across multiple CFs?
 use std::path::PathBuf;
 
-use crate::record::Record;
+use crate::{index::Index, record::Record};
 
 use rocksdb::{ColumnFamilyDescriptor, MergeOperands, Options, DB};
+use uuid::Uuid;
 
 #[derive(Debug)]
 ///
@@ -60,8 +61,25 @@ pub struct Storage {
     data: DB,
 }
 
-fn idx_merger(k: &[u8], v: Option<&[u8]>, ops: &mut MergeOperands) -> Option<Vec<u8>> {
-    None
+fn idx_merger(
+    key: &[u8],
+    existing: Option<&[u8]>,
+    operands: &mut MergeOperands,
+) -> Option<Vec<u8>> {
+    let entity_id = Uuid::from_slice(key).unwrap();
+
+    let new_records: Vec<Uuid> = operands.map(|op| Uuid::from_slice(&op).unwrap()).collect();
+
+    let mut index = match existing {
+        // If there is no existing data, then create a new Index
+        None => Index::new(),
+        // Otherwise decode the index from the existing data
+        Some(val) => Index::decode(entity_id, val),
+    };
+
+    // Appened each new record into the index
+    new_records.into_iter().for_each(|u| index.append_record(u));
+    Some(index.encode())
 }
 
 impl Storage {
@@ -107,21 +125,30 @@ impl Storage {
         }
     }
 
-    ///
-    pub fn write(&mut self, record: &Record) -> Result<(), &'static str> {
-        // Write the data record, and get the ID
-
-        // Merge the ID into the Index at record.entity_id
-        let cf = self.indexes.cf_handle("idx").unwrap();
-        self.indexes
-            .merge_cf(
-                cf,
-                record.entity_id.to_hyphenated().to_string(),
-                record.encode(),
-            )
+    /// TODO: Proper error for result would be nicer ..
+    pub fn write(&self, record: &Record<'_>) -> Result<(), &'static str> {
+        // Write the data record ...
+        let cf_data = self.data.cf_handle("data").unwrap();
+        self.data
+            .put_cf(cf_data, record.id.as_bytes(), record.encode())
             .unwrap();
 
+        // Merge the ID of the record into the tail of the index.
+        let cf_idx = self.indexes.cf_handle("idx").unwrap();
+
+        self.indexes
+            .merge_cf(cf_idx, record.entity_id.as_bytes(), record.id.as_bytes())
+            .unwrap();
+        println!("Done merging ...");
         Ok(())
+    }
+
+    ///
+    pub fn get_index(&self, id: Uuid) -> Option<Index> {
+        let cf_idx = self.indexes.cf_handle("idx").unwrap();
+        // TODO: Let's get rid of the ugly ...
+        let v_data = self.indexes.get_cf(cf_idx, id.as_bytes()).unwrap().unwrap();
+        Some(Index::decode(id, &v_data))
     }
 }
 
@@ -129,7 +156,10 @@ impl Storage {
 mod tests {
     use super::Storage;
 
+    use crate::record::Record;
+
     use test_dir::{DirBuilder, FileType, TestDir};
+    use uuid::Uuid;
 
     #[test]
     fn can_create_storage() {
@@ -138,5 +168,44 @@ mod tests {
             .create("dta", FileType::Dir);
 
         let _ = Storage::new(tmp.path("idx"), tmp.path("dta"));
+    }
+
+    #[test]
+    fn can_write_a_record() {
+        let tmp = TestDir::temp()
+            .create("idx", FileType::Dir)
+            .create("dta", FileType::Dir);
+
+        let storage = Storage::new(tmp.path("idx"), tmp.path("dta"));
+        let record = Record::new(Uuid::new_v4(), "type", "name", "data");
+
+        storage.write(&record).unwrap();
+
+        let idx = storage.get_index(record.entity_id);
+        println!("{:?}", idx);
+    }
+
+    #[test]
+    fn can_write_two_records() {
+        let tmp = TestDir::temp()
+            .create("idx", FileType::Dir)
+            .create("dta", FileType::Dir);
+
+        let storage = Storage::new(tmp.path("idx"), tmp.path("dta"));
+
+        let record1 = Record::new(Uuid::new_v4(), "type1", "name1", "data1");
+        let record2 = Record::new(record1.entity_id, "type2", "name2", "data2");
+
+        storage.write(&record1).unwrap();
+        storage.write(&record2).unwrap();
+
+        assert_eq!(record1.entity_id, record2.entity_id);
+
+        let idx = storage.get_index(record1.entity_id).unwrap();
+        assert_eq!(idx.records.len(), 2);
+        assert_eq!(idx.records[0].0, record1.id);
+        assert_eq!(idx.records[1].0, record2.id);
+        // Check timestamps
+        assert!(idx.records[0].1 < idx.records[1].1);
     }
 }

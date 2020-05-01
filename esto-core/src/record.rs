@@ -7,6 +7,9 @@ use std::time::{Duration, SystemTime};
 #[derive(Debug, Deserialize, Serialize)]
 ///A single event record
 pub struct Record<'a> {
+    /// A unique identifier for this record
+    pub id: Uuid,
+
     /// Number of sends since the epoch
     pub timestamp: Duration,
 
@@ -28,7 +31,7 @@ impl<'a> Record<'a> {
     /// Creates a new event record and sets the timestamp
     /// to the number of seconds since the epoch. Currently
     /// this is not set by a monotonic clock :(
-    fn new(
+    pub fn new(
         entity_id: Uuid,
         entity_type: &'a str,
         event_name: &'a str,
@@ -39,6 +42,7 @@ impl<'a> Record<'a> {
             .unwrap();
 
         Record {
+            id: Uuid::new_v4(),
             timestamp: ts,
             entity_id,
             entity_type,
@@ -66,7 +70,7 @@ mod tests {
 
     #[test]
     fn record_to_bin_to_record() {
-        let mut record = Record::new(Uuid::new_v4(), "type", "name", "data");
+        let record = Record::new(Uuid::new_v4(), "type", "name", "data");
         let encoded: _ = record.encode();
         let new_record = Record::decode(&encoded);
         assert!(record.entity_id == new_record.entity_id)
