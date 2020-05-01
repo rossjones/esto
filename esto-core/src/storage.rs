@@ -47,15 +47,21 @@
 //!
 //! TODO: Do we want to partition the data more finely in CFs? Should we
 //! shard the IDs across multiple CFs?
-
-use rocksdb::{ColumnFamilyDescriptor, Options, DB};
 use std::path::PathBuf;
+
+use crate::record::Record;
+
+use rocksdb::{ColumnFamilyDescriptor, MergeOperands, Options, DB};
 
 #[derive(Debug)]
 ///
 pub struct Storage {
     indexes: DB,
     data: DB,
+}
+
+fn idx_merger(k: &[u8], v: Option<&[u8]>, ops: &mut MergeOperands) -> Option<Vec<u8>> {
+    None
 }
 
 impl Storage {
@@ -82,7 +88,9 @@ impl Storage {
     /// );
     /// ```
     pub fn new(index_path: PathBuf, data_path: PathBuf) -> Self {
-        let idx_cf_opts = Options::default();
+        let mut idx_cf_opts = Options::default();
+        idx_cf_opts.set_merge_operator("add_record_index", idx_merger, None);
+
         let idx_cf = ColumnFamilyDescriptor::new("idx", idx_cf_opts);
 
         let data_cf_opts = Options::default();
@@ -97,6 +105,23 @@ impl Storage {
             indexes: DB::open_cf_descriptors(&db_options, &index_path, vec![idx_cf]).unwrap(),
             data: DB::open_cf_descriptors(&db_options, &data_path, vec![data_cf]).unwrap(),
         }
+    }
+
+    ///
+    pub fn write(&mut self, record: &Record) -> Result<(), &'static str> {
+        // Write the data record, and get the ID
+
+        // Merge the ID into the Index at record.entity_id
+        let cf = self.indexes.cf_handle("idx").unwrap();
+        self.indexes
+            .merge_cf(
+                cf,
+                record.entity_id.to_hyphenated().to_string(),
+                record.encode(),
+            )
+            .unwrap();
+
+        Ok(())
     }
 }
 

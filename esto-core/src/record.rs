@@ -53,7 +53,7 @@ impl<'a> Record<'a> {
     }
 
     /// Encode the Record as a vec of bytes for storage
-    pub fn encode(&mut self) -> Vec<u8> {
+    pub fn encode(&self) -> Vec<u8> {
         bincode::serialize(self).unwrap()
     }
 }
