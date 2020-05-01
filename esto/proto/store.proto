@@ -1,14 +1,14 @@
 syntax = "proto3";
 package store;
 
-service Greeter {
-    rpc SayHello (HelloRequest) returns (HelloReply);
+service Storer {
+    rpc StoreRecord (StoreRequest) returns (StoreReply);
 }
 
-message HelloRequest {
+message StoreRequest {
    string name = 1;
 }
 
-message HelloReply {
+message StoreReply {
     string message = 1;
 }

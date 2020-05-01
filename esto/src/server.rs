@@ -1,37 +1,37 @@
 use tonic::{transport::Server, Request, Response, Status};
 
-use store::greeter_server::{Greeter, GreeterServer};
-use store::{HelloReply, HelloRequest};
+use store::storer_server::{Storer, StorerServer};
+use store::{StoreReply, StoreRequest};
 
 pub mod store {
     tonic::include_proto!("store");
 }
 
 #[derive(Debug, Default)]
-pub struct MyGreeter {}
+pub struct LocalStorer {}
 
 #[tonic::async_trait]
-impl Greeter for MyGreeter {
-    async fn say_hello(
+impl Storer for LocalStorer {
+    async fn store_record(
         &self,
-        request: Request<HelloRequest>, // Accept request of type HelloRequest
-    ) -> Result<Response<HelloReply>, Status> {
+        request: Request<StoreRequest>, // Accept request of type HelloRequest
+    ) -> Result<Response<StoreReply>, Status> {
         println!("Got a request: {:?}", request);
 
-        let reply = HelloReply {
-            message: format!("Hello {}!", request.into_inner().name), // We must use .into_inner() as the fields of gRPC requests and responses are private
+        let reply = StoreReply {
+            message: format!("Hello {}!", request.into_inner().name),
         };
 
-        Ok(Response::new(reply)) // Send back our formatted greeting
+        Ok(Response::new(reply))
     }
 }
 
 pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:50051".parse()?;
-    let greeter = MyGreeter::default();
+    let greeter = LocalStorer::default();
 
     Server::builder()
-        .add_service(GreeterServer::new(greeter))
+        .add_service(StorerServer::new(greeter))
         .serve(addr)
         .await?;
 
