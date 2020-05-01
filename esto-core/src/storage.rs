@@ -139,7 +139,7 @@ impl Storage {
         self.indexes
             .merge_cf(cf_idx, record.entity_id.as_bytes(), record.id.as_bytes())
             .unwrap();
-        println!("Done merging ...");
+
         Ok(())
     }
 
@@ -181,8 +181,8 @@ mod tests {
 
         storage.write(&record).unwrap();
 
-        let idx = storage.get_index(record.entity_id);
-        println!("{:?}", idx);
+        let idx = storage.get_index(record.entity_id).unwrap();
+        assert_eq!(idx.records.len(), 1);
     }
 
     #[test]
