@@ -71,7 +71,7 @@ mod tests {
     #[test]
     fn record_to_bin_to_record() {
         let record = Record::new(Uuid::new_v4(), "type", "name", "data");
-        let encoded: _ = record.encode();
+        let encoded = record.encode();
         let new_record = Record::decode(&encoded);
         assert!(record.entity_id == new_record.entity_id)
     }

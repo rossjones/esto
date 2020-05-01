@@ -54,7 +54,6 @@ use crate::{index::Index, record::Record};
 use rocksdb::{ColumnFamilyDescriptor, MergeOperands, Options, DB};
 use uuid::Uuid;
 
-#[derive(Debug)]
 ///
 pub struct Storage {
     indexes: DB,
@@ -80,6 +79,15 @@ fn idx_merger(
     // Appened each new record into the index
     new_records.into_iter().for_each(|u| index.append_record(u));
     Some(index.encode())
+}
+
+impl std::fmt::Debug for Storage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Storage")
+            .field("indexes", &self.indexes)
+            .field("data", &self.data)
+            .finish()
+    }
 }
 
 impl Storage {
@@ -144,6 +152,29 @@ impl Storage {
     }
 
     ///
+    pub fn read(&self, id: Uuid) -> Result<Vec<Vec<u8>>, &'static str> {
+        let idx = self.get_index(id);
+
+        let record_ids = match idx {
+            Some(i) => i.records,
+            None => return Err("Cannot find index"),
+        };
+
+        // Erm, what no multiget?
+        let cf_data = self.data.cf_handle("data").unwrap();
+
+        let records = record_ids
+            .into_iter()
+            .map(|r| {
+                // If this record isn't here, it means we failed to write it but
+                // did manage to update the index...
+                self.data.get_cf(cf_data, r.0.as_bytes()).unwrap().unwrap()
+            })
+            .collect();
+        Ok(records)
+    }
+
+    ///
     pub fn get_index(&self, id: Uuid) -> Option<Index> {
         let cf_idx = self.indexes.cf_handle("idx").unwrap();
         // TODO: Let's get rid of the ugly ...
@@ -183,6 +214,15 @@ mod tests {
 
         let idx = storage.get_index(record.entity_id).unwrap();
         assert_eq!(idx.records.len(), 1);
+
+        let recs = storage.read(idx.id).unwrap();
+        assert_eq!(recs.len(), 1);
+
+        let record = Record::decode(&recs[0]);
+        assert_eq!(record.entity_id, idx.id);
+        assert_eq!(record.entity_type, "type");
+        assert_eq!(record.event_name, "name");
+        assert_eq!(record.event_data, "data");
     }
 
     #[test]
@@ -207,5 +247,20 @@ mod tests {
         assert_eq!(idx.records[1].0, record2.id);
         // Check timestamps
         assert!(idx.records[0].1 < idx.records[1].1);
+
+        let recs = storage.read(idx.id).unwrap();
+        assert_eq!(recs.len(), 2);
+
+        let mut record = Record::decode(&recs[0]);
+        assert_eq!(record.entity_id, idx.id);
+        assert_eq!(record.entity_type, "type1");
+        assert_eq!(record.event_name, "name1");
+        assert_eq!(record.event_data, "data1");
+
+        record = Record::decode(&recs[1]);
+        assert_eq!(record.entity_id, idx.id);
+        assert_eq!(record.entity_type, "type2");
+        assert_eq!(record.event_name, "name2");
+        assert_eq!(record.event_data, "data2");
     }
 }
