@@ -9,14 +9,20 @@
     unsafe_code,
     unstable_features,
     unused_import_braces,
-    unused_qualifications
+    // unused_qualifications - grpc generated code triggers this
 )]
 
 use esto_core::{get_version, storage::Storage};
 use std::path::PathBuf;
 
-fn main() {
-    println!("Esto, version: {}!", get_version());
+mod server;
 
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("Esto, version: {}!", get_version());
     let _s = Storage::new(PathBuf::from("/tmp/test_i"), PathBuf::from("/tmp/test_d"));
+
+    server::run().await.unwrap();
+
+    Ok(())
 }
