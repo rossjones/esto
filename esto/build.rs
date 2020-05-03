@@ -3,6 +3,6 @@ fn main() {
 
     tonic_build::configure()
         .build_server(true)
-        .compile(&["proto/store.proto"], &["proto"])
+        .compile(&["proto/esto_rpc.proto"], &["proto"])
         .unwrap();
 }

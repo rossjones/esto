@@ -1,8 +1,9 @@
 syntax = "proto3";
-package store;
+package esto_rpc;
 
-service Storer {
+service Esto {
     rpc StoreRecord (StoreRequest) returns (StoreReply);
+    rpc ReadRecord (ReadRequest) returns (ReadReply);
 }
 
 message StoreRequest {
@@ -15,4 +16,12 @@ message StoreRequest {
 
 message StoreReply {
     string message = 1;
+}
+
+message ReadRequest {
+    string entity_id = 1 ;
+}
+
+message ReadReply {
+    string entity_data = 1;
 }
