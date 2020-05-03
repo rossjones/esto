@@ -56,7 +56,6 @@ use uuid::Uuid;
 
 ///
 pub struct Storage {
-    indexes: DB,
     data: DB,
 }
 
@@ -84,8 +83,7 @@ fn idx_merger(
 impl std::fmt::Debug for Storage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Storage")
-            .field("indexes", &self.indexes)
-            .field("data", &self.data)
+            .field("indexes", &self.data)
             .finish()
     }
 }
@@ -109,11 +107,10 @@ impl Storage {
     /// use esto_core::storage::Storage;
     ///
     /// let s = Storage::new(
-    ///     PathBuf::from("/tmp/test_i"),
     ///     PathBuf::from("/tmp/test_d")
     /// );
     /// ```
-    pub fn new(index_path: PathBuf, data_path: PathBuf) -> Self {
+    pub fn new(data_path: PathBuf) -> Self {
         let mut idx_cf_opts = Options::default();
         idx_cf_opts.set_merge_operator("add_record_index", idx_merger, None);
 
@@ -128,8 +125,7 @@ impl Storage {
         db_options.set_keep_log_file_num(10);
 
         Storage {
-            indexes: DB::open_cf_descriptors(&db_options, &index_path, vec![idx_cf]).unwrap(),
-            data: DB::open_cf_descriptors(&db_options, &data_path, vec![data_cf]).unwrap(),
+            data: DB::open_cf_descriptors(&db_options, &data_path, vec![idx_cf, data_cf]).unwrap(),
         }
     }
 
@@ -142,9 +138,9 @@ impl Storage {
             .unwrap();
 
         // Merge the ID of the record into the tail of the index.
-        let cf_idx = self.indexes.cf_handle("idx").unwrap();
+        let cf_idx = self.data.cf_handle("idx").unwrap();
 
-        self.indexes
+        self.data
             .merge_cf(cf_idx, record.entity_id.as_bytes(), record.id.as_bytes())
             .unwrap();
 
@@ -176,9 +172,9 @@ impl Storage {
 
     ///
     pub fn get_index(&self, id: Uuid) -> Option<Index> {
-        let cf_idx = self.indexes.cf_handle("idx").unwrap();
+        let cf_idx = self.data.cf_handle("idx").unwrap();
         // TODO: Let's get rid of the ugly ...
-        let v_data = self.indexes.get_cf(cf_idx, id.as_bytes()).unwrap().unwrap();
+        let v_data = self.data.get_cf(cf_idx, id.as_bytes()).unwrap().unwrap();
         Some(Index::decode(id, &v_data))
     }
 }
@@ -194,20 +190,16 @@ mod tests {
 
     #[test]
     fn can_create_storage() {
-        let tmp = TestDir::temp()
-            .create("idx", FileType::Dir)
-            .create("dta", FileType::Dir);
+        let tmp = TestDir::temp().create("dta", FileType::Dir);
 
-        let _ = Storage::new(tmp.path("idx"), tmp.path("dta"));
+        let _ = Storage::new(tmp.path("dta"));
     }
 
     #[test]
     fn can_write_a_record() {
-        let tmp = TestDir::temp()
-            .create("idx", FileType::Dir)
-            .create("dta", FileType::Dir);
+        let tmp = TestDir::temp().create("dta", FileType::Dir);
 
-        let storage = Storage::new(tmp.path("idx"), tmp.path("dta"));
+        let storage = Storage::new(tmp.path("dta"));
         let record = Record::new(Uuid::new_v4(), "type", "name", "data");
 
         storage.write(&record).unwrap();
@@ -227,11 +219,9 @@ mod tests {
 
     #[test]
     fn can_write_two_records() {
-        let tmp = TestDir::temp()
-            .create("idx", FileType::Dir)
-            .create("dta", FileType::Dir);
+        let tmp = TestDir::temp().create("dta", FileType::Dir);
 
-        let storage = Storage::new(tmp.path("idx"), tmp.path("dta"));
+        let storage = Storage::new(tmp.path("dta"));
 
         let record1 = Record::new(Uuid::new_v4(), "type1", "name1", "data1");
         let record2 = Record::new(record1.entity_id, "type2", "name2", "data2");

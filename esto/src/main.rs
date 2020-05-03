@@ -20,9 +20,9 @@ mod server;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Esto, version: {}!", get_version());
-    let _s = Storage::new(PathBuf::from("/tmp/test_i"), PathBuf::from("/tmp/test_d"));
 
-    server::run().await.unwrap();
+    let s = Storage::new(PathBuf::from("/tmp/test_d"));
+    server::run(s).await.unwrap();
 
     Ok(())
 }
