@@ -11,6 +11,7 @@ esto-core = { path = "../esto-core" }
 tonic = "0.2.0"
 prost = "0.6"
 tokio = { version = "0.2", features = ["macros"] }
+uuid = { version = "0.8", features = ["serde", "v4"] }
 
 [build-dependencies]
 tonic-build = "0.2.0"

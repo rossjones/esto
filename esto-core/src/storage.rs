@@ -174,6 +174,7 @@ impl Storage {
     pub fn get_index(&self, id: Uuid) -> Option<Index> {
         let cf_idx = self.data.cf_handle("idx").unwrap();
         // TODO: Let's get rid of the ugly ...
+
         let v_data = self.data.get_cf(cf_idx, id.as_bytes()).unwrap().unwrap();
         Some(Index::decode(id, &v_data))
     }
@@ -187,13 +188,6 @@ mod tests {
 
     use test_dir::{DirBuilder, FileType, TestDir};
     use uuid::Uuid;
-
-    #[test]
-    fn can_create_storage() {
-        let tmp = TestDir::temp().create("dta", FileType::Dir);
-
-        let _ = Storage::new(tmp.path("dta"));
-    }
 
     #[test]
     fn can_write_a_record() {
