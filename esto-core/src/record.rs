@@ -1,4 +1,19 @@
+//! A record describing a single event
 //!
+//! The Record contained here is essentially a strongly
+//! opinionated view of what an event should looke like
+//! in a basic event store.
+//!
+//! The entity fields `entity_id` and `entity_type` are
+//! used to identify the thing that this record is about
+//! - ideally with a UUID identifier and a unique type name.
+//!
+//! The event fields, `event_name` and `event_data` are used
+//! to describe the event.  The name should be self-explanatory,
+//! and the event_data is expected to be some form of text
+//! serialization, such as JSON. No attempt it make to intepret
+//! the data, it is treated as a UTF8 string, and stored/retrieved
+//! as UTF8 bytes.
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
