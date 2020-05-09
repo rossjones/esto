@@ -49,7 +49,7 @@
 //! shard the IDs across multiple CFs?
 use std::path::PathBuf;
 
-use crate::errors::StorageResult;
+use crate::errors::{StorageError, StorageResult};
 use crate::{index::Index, record::Record};
 
 use rocksdb::{ColumnFamilyDescriptor, MergeOperands, Options, DB};
@@ -180,11 +180,17 @@ impl Storage {
     pub fn get_index(&self, entity_id: Uuid) -> StorageResult<Index> {
         let cf_idx = self.data.cf_handle("idx").unwrap();
 
-        let v_data = self
-            .data
-            .get_cf(cf_idx, entity_id.as_bytes())
-            .unwrap()
-            .unwrap();
+        let res = self.data.get_cf(cf_idx, entity_id.as_bytes()).unwrap();
+
+        let v_data = match res {
+            Some(data) => data,
+            None => {
+                return Err(StorageError {
+                    message: "Failed to find index data",
+                })
+            }
+        };
+
         Ok(Index::decode(entity_id, &v_data))
     }
 }
