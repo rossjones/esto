@@ -11,6 +11,7 @@
     unused_import_braces,
     unused_qualifications
 )]
+pub mod errors;
 pub mod index;
 pub mod record;
 pub mod storage;

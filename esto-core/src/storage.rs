@@ -49,6 +49,7 @@
 //! shard the IDs across multiple CFs?
 use std::path::PathBuf;
 
+use crate::errors::{StorageError, StorageResult};
 use crate::{index::Index, record::Record};
 
 use rocksdb::{ColumnFamilyDescriptor, MergeOperands, Options, DB};
@@ -108,9 +109,9 @@ impl Storage {
     ///
     /// let s = Storage::new(
     ///     PathBuf::from("/tmp/test_d")
-    /// );
+    /// ).unwrap();
     /// ```
-    pub fn new(data_path: PathBuf) -> Self {
+    pub fn new(data_path: PathBuf) -> StorageResult<Self> {
         let mut idx_cf_opts = Options::default();
         idx_cf_opts.set_merge_operator("add_record_index", idx_merger, None);
 
@@ -124,13 +125,13 @@ impl Storage {
         db_options.create_if_missing(true);
         db_options.set_keep_log_file_num(10);
 
-        Storage {
+        Ok(Storage {
             data: DB::open_cf_descriptors(&db_options, &data_path, vec![idx_cf, data_cf]).unwrap(),
-        }
+        })
     }
 
-    /// TODO: Proper error for result would be nicer ..
-    pub fn write(&self, record: &Record<'_>) -> Result<(), &'static str> {
+    ///
+    pub fn write(&self, record: &Record<'_>) -> StorageResult<()> {
         // Write the data record ...
         let cf_data = self.data.cf_handle("data").unwrap();
         self.data
@@ -148,12 +149,16 @@ impl Storage {
     }
 
     ///
-    pub fn read(&self, id: Uuid) -> Result<Vec<Vec<u8>>, &'static str> {
+    pub fn read(&self, id: Uuid) -> StorageResult<Vec<Vec<u8>>> {
         let idx = self.get_index(id);
 
         let record_ids = match idx {
             Some(i) => i.records,
-            None => return Err("Cannot find index"),
+            None => {
+                return Err(StorageError {
+                    message: "Unable to find data in index",
+                })
+            }
         };
 
         // Erm, what no multiget?
@@ -193,7 +198,7 @@ mod tests {
     fn can_write_a_record() {
         let tmp = TestDir::temp().create("dta", FileType::Dir);
 
-        let storage = Storage::new(tmp.path("dta"));
+        let storage = Storage::new(tmp.path("dta")).unwrap();
         let record = Record::new(Uuid::new_v4(), "type", "name", "data");
 
         storage.write(&record).unwrap();
@@ -215,7 +220,7 @@ mod tests {
     fn can_write_two_records() {
         let tmp = TestDir::temp().create("dta", FileType::Dir);
 
-        let storage = Storage::new(tmp.path("dta"));
+        let storage = Storage::new(tmp.path("dta")).unwrap();
 
         let record1 = Record::new(Uuid::new_v4(), "type1", "name1", "data1");
         let record2 = Record::new(record1.entity_id, "type2", "name2", "data2");
