@@ -49,13 +49,14 @@
 //! shard the IDs across multiple CFs?
 use std::path::PathBuf;
 
-use crate::errors::{StorageError, StorageResult};
+use crate::errors::StorageResult;
 use crate::{index::Index, record::Record};
 
 use rocksdb::{ColumnFamilyDescriptor, MergeOperands, Options, DB};
 use uuid::Uuid;
 
-///
+/// The Storage struct represents a single store and attempts to
+/// abstract away the details of storage as much as possible.
 pub struct Storage {
     data: DB,
 }
@@ -76,7 +77,7 @@ fn idx_merger(
         Some(val) => Index::decode(entity_id, val),
     };
 
-    // Appened each new record into the index
+    // Append each new record ID into the index
     new_records.into_iter().for_each(|u| index.append_record(u));
     Some(index.encode())
 }
@@ -130,7 +131,8 @@ impl Storage {
         })
     }
 
-    ///
+    /// Writes a new record to the data column-family, and then updates the
+    /// appopriate index by appending the new record's ID.
     pub fn write(&self, record: &Record<'_>) -> StorageResult<()> {
         // Write the data record ...
         let cf_data = self.data.cf_handle("data").unwrap();
@@ -138,7 +140,7 @@ impl Storage {
             .put_cf(cf_data, record.id.as_bytes(), record.encode())
             .unwrap();
 
-        // Merge the ID of the record into the tail of the index.
+        // Merge the ID of the record onto the tail of the index.
         let cf_idx = self.data.cf_handle("idx").unwrap();
 
         self.data
@@ -148,17 +150,16 @@ impl Storage {
         Ok(())
     }
 
-    ///
-    pub fn read(&self, id: Uuid) -> StorageResult<Vec<Vec<u8>>> {
-        let idx = self.get_index(id);
+    /// Attempts to read all of the records for a specific entity,
+    /// returning the list of events as a vec of vec[u8]. It is
+    /// the responsibility of the caller to convert this to a
+    /// Record struct
+    pub fn read(&self, entity_id: Uuid) -> StorageResult<Vec<Vec<u8>>> {
+        let idx = self.get_index(entity_id);
 
         let record_ids = match idx {
-            Some(i) => i.records,
-            None => {
-                return Err(StorageError {
-                    message: "Unable to find data in index",
-                })
-            }
+            Ok(i) => i.records,
+            Err(err) => return Err(err),
         };
 
         // Erm, what no multiget?
@@ -175,13 +176,16 @@ impl Storage {
         Ok(records)
     }
 
-    ///
-    pub fn get_index(&self, id: Uuid) -> Option<Index> {
+    /// Retrieves an Index given the id of an entity
+    pub fn get_index(&self, entity_id: Uuid) -> StorageResult<Index> {
         let cf_idx = self.data.cf_handle("idx").unwrap();
-        // TODO: Let's get rid of the ugly ...
 
-        let v_data = self.data.get_cf(cf_idx, id.as_bytes()).unwrap().unwrap();
-        Some(Index::decode(id, &v_data))
+        let v_data = self
+            .data
+            .get_cf(cf_idx, entity_id.as_bytes())
+            .unwrap()
+            .unwrap();
+        Ok(Index::decode(entity_id, &v_data))
     }
 }
 
