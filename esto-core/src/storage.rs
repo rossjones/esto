@@ -71,7 +71,7 @@ fn idx_merger(
     //  panicked at 'called `Result::unwrap()` on an `Err` value: Error(Build(Error { expected: 16, found: 116 }))'
     let new_record_ids: Vec<Uuid> = operands
         .map(|op| {
-            // op MUST be 16 bytes
+            // op MUST be 16 bytes, is it record for some reason?
             if op.len() != 16 {
                 let r = Record::decode(&op);
                 println!("{:?}", r);
@@ -129,9 +129,7 @@ impl Storage {
         idx_cf_opts.set_merge_operator("add_record_index", idx_merger, None);
 
         let idx_cf = ColumnFamilyDescriptor::new("idx", idx_cf_opts);
-
-        let data_cf_opts = Options::default();
-        let data_cf = ColumnFamilyDescriptor::new("data", data_cf_opts);
+        let data_cf = ColumnFamilyDescriptor::new("data", Options::default());
 
         let mut db_options = Options::default();
         db_options.create_missing_column_families(true);
@@ -158,9 +156,6 @@ impl Storage {
         self.data
             .merge_cf(cf_idx, record.entity_id.as_bytes(), record.id.as_bytes())
             .unwrap();
-
-        self.data.flush_cf(&cf_data).unwrap();
-        self.data.flush_cf(&cf_idx).unwrap();
 
         Ok(())
     }
@@ -189,6 +184,11 @@ impl Storage {
             })
             .collect();
         Ok(records)
+    }
+
+    /// Attempts to shut down the database cleanly
+    pub fn close(&mut self) {
+        self.data.flush().unwrap();
     }
 
     /// Retrieves an Index given the id of an entity

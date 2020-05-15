@@ -23,20 +23,36 @@ class Client:
         yield from event_list.events
 
 
-client = Client()
+from multiprocessing import Process
 
-start_time = time.time()
-for _ in range(1, 500):
-    client.write(
-        entity_id="95C6D7EF-58E1-4C32-A1C6-7A11CB63C759",
-        entity_type="MyThing",
-        event_name="ThingDoneToMyThing",
-        event_data={
-            "a": 1,
-            "b": 2
-        }
-    )
-    # client.read(entity_id="95C6D7EF-58E1-4C32-A1C6-7A11CB63C759")
-print(time.time() - start_time)
-# y = Client().read(entity_id="95C6D7EF-58E1-4C32-A1C6-7A11CB63C759")
-# print(list(y))
+def run_test():
+    print("!")
+    client = Client()
+
+    start_time = time.time()
+    for _ in range(1, 500):
+        # client.write(
+        #     entity_id="95C6D7EF-58E1-4C32-A1C6-7A11CB63C759",
+        #     entity_type="MyThing",
+        #     event_name="ThingDoneToMyThing",
+        #     event_data={
+        #         "a": 1,
+        #         "b": 2
+        #     }
+        # )
+        client.read(entity_id="95C6D7EF-58E1-4C32-A1C6-7A11CB63C759")
+    print(time.time() - start_time)
+    # y = Client().read(entity_id="95C6D7EF-58E1-4C32-A1C6-7A11CB63C759")
+    # print(list(y))
+
+if __name__ == '__main__':
+    jobs = []
+
+    for x in range(1, 5):  # 4 processes
+        p = Process(target=run_test, args=())
+        p.start()
+        jobs.append(p)
+
+    for j in jobs:
+        j.join()
+

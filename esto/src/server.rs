@@ -1,5 +1,7 @@
 use esto_core::{record::Record, storage::Storage};
 
+use futures_util::FutureExt;
+use tokio::sync::oneshot;
 use tonic::{transport::Server, Request, Response, Status};
 use uuid::Uuid;
 
@@ -70,13 +72,16 @@ impl Esto for LocalStorage {
     }
 }
 
-pub async fn run(storage: Storage) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run(
+    storage: Storage,
+    rx: oneshot::Receiver<()>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:50051".parse()?;
     let storage = LocalStorage { storage };
 
     Server::builder()
         .add_service(EstoServer::new(storage))
-        .serve(addr)
+        .serve_with_shutdown(addr, rx.map(drop))
         .await?;
 
     Ok(())
