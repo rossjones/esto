@@ -69,7 +69,16 @@ fn idx_merger(
     let entity_id = Uuid::from_slice(key).unwrap();
 
     //  panicked at 'called `Result::unwrap()` on an `Err` value: Error(Build(Error { expected: 16, found: 116 }))'
-    let new_records: Vec<Uuid> = operands.map(|op| Uuid::from_slice(&op).unwrap()).collect();
+    let new_record_ids: Vec<Uuid> = operands
+        .map(|op| {
+            // op MUST be 16 bytes
+            if op.len() != 16 {
+                let r = Record::decode(&op);
+                println!("{:?}", r);
+            }
+            Uuid::from_slice(&op).unwrap()
+        })
+        .collect();
 
     let mut index = match existing {
         // If there is no existing data, then create a new Index
@@ -79,7 +88,9 @@ fn idx_merger(
     };
 
     // Append each new record ID into the index
-    new_records.into_iter().for_each(|u| index.append_record(u));
+    new_record_ids
+        .into_iter()
+        .for_each(|u| index.append_record(u));
     Some(index.encode())
 }
 
@@ -147,6 +158,9 @@ impl Storage {
         self.data
             .merge_cf(cf_idx, record.entity_id.as_bytes(), record.id.as_bytes())
             .unwrap();
+
+        self.data.flush_cf(&cf_data).unwrap();
+        self.data.flush_cf(&cf_idx).unwrap();
 
         Ok(())
     }

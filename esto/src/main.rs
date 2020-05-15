@@ -21,7 +21,8 @@ mod server;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Esto, version: {}!", get_version());
 
-    let s = Storage::new(PathBuf::from("/tmp/test_d")).unwrap();
+    let s = Storage::new(PathBuf::from("/tmp/testing")).unwrap();
+
     server::run(s).await.unwrap();
 
     Ok(())
