@@ -68,6 +68,7 @@ fn idx_merger(
 ) -> Option<Vec<u8>> {
     let entity_id = Uuid::from_slice(key).unwrap();
 
+    //  panicked at 'called `Result::unwrap()` on an `Err` value: Error(Build(Error { expected: 16, found: 116 }))'
     let new_records: Vec<Uuid> = operands.map(|op| Uuid::from_slice(&op).unwrap()).collect();
 
     let mut index = match existing {

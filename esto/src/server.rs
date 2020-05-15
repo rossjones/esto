@@ -4,7 +4,7 @@ use tonic::{transport::Server, Request, Response, Status};
 use uuid::Uuid;
 
 use esto_rpc::esto_server::{Esto, EstoServer};
-use esto_rpc::{ReadReply, ReadRequest};
+use esto_rpc::{Event, ReadEventList, ReadRequest};
 use esto_rpc::{StoreReply, StoreRequest};
 
 pub mod esto_rpc {
@@ -22,8 +22,6 @@ impl Esto for LocalStorage {
         &self,
         request: Request<StoreRequest>, // Accept request of type HelloRequest
     ) -> Result<Response<StoreReply>, Status> {
-        println!("Got a request: {:?}", request);
-
         let r = request.into_inner();
 
         // Create record
@@ -33,7 +31,6 @@ impl Esto for LocalStorage {
             &r.event_name,
             &r.event_data,
         );
-
         // Store record
         let response = match self.storage.write(&record) {
             Ok(()) => {
@@ -50,20 +47,26 @@ impl Esto for LocalStorage {
     async fn read_record(
         &self,
         request: Request<ReadRequest>, // Accept request of type HelloRequest
-    ) -> Result<Response<ReadReply>, Status> {
-        println!("Got a request: {:?}", request);
+    ) -> Result<Response<ReadEventList>, Status> {
         let r = request.into_inner();
 
         let id = Uuid::parse_str(&r.entity_id).unwrap();
 
-        let record_bytes = self.storage.read(id).unwrap();
+        let records_vec = self.storage.read(id).unwrap();
+        let records: Vec<_> = records_vec.iter().map(|rec| Record::decode(&rec)).collect();
 
-        // decode record_bytes and then jsonify
+        let events = records
+            .iter()
+            .map(|rec| Event {
+                entity_id: rec.entity_id.to_string(),
+                entity_type: rec.entity_type.to_string(),
+                event_name: rec.event_name.to_string(),
+                event_data: rec.event_data.to_string(),
+                timestamp: rec.timestamp.as_secs(),
+            })
+            .collect();
 
-        let reply = ReadReply {
-            entity_data: format!("{:?}", record_bytes),
-        };
-        Ok(Response::new(reply))
+        Ok(Response::new(ReadEventList { events }))
     }
 }
 
