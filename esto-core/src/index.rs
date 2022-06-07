@@ -67,7 +67,7 @@ impl Index {
     pub fn decode(id: Uuid, val: &[u8]) -> Self {
         Index {
             id,
-            records: bincode::deserialize(&val[..]).unwrap(),
+            records: bincode::deserialize(val).unwrap(),
         }
     }
 

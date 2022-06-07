@@ -69,16 +69,14 @@ fn idx_merger(
     let entity_id = Uuid::from_slice(key).unwrap();
 
     //  panicked at 'called `Result::unwrap()` on an `Err` value: Error(Build(Error { expected: 16, found: 116 }))'
-    let new_record_ids: Vec<Uuid> = operands
-        .map(|op| {
-            // op MUST be 16 bytes, is it record for some reason?
-            if op.len() != 16 {
-                let r = Record::decode(&op);
-                println!("{:?}", r);
-            }
-            Uuid::from_slice(&op).unwrap()
-        })
-        .collect();
+    let new_record_ids = operands.map(|op| {
+        // op MUST be 16 bytes, is it record for some reason?
+        if op.len() != 16 {
+            let r = Record::decode(op);
+            println!("{:?}", r);
+        }
+        Uuid::from_slice(op).unwrap()
+    });
 
     let mut index = match existing {
         // If there is no existing data, then create a new Index

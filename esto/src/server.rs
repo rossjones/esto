@@ -55,7 +55,7 @@ impl Esto for LocalStorage {
         let id = Uuid::parse_str(&r.entity_id).unwrap();
 
         let records_vec = self.storage.read(id).unwrap();
-        let records: Vec<_> = records_vec.iter().map(|rec| Record::decode(&rec)).collect();
+        let records: Vec<_> = records_vec.iter().map(|rec| Record::decode(rec)).collect();
 
         let events = records
             .iter()

@@ -68,7 +68,7 @@ impl<'a> Record<'a> {
 
     /// Converts bytes (from storage) into a record
     pub fn decode(val: &'a [u8]) -> Self {
-        bincode::deserialize(&val[..]).unwrap()
+        bincode::deserialize(val).unwrap()
     }
 
     /// Encode the Record as a vec of bytes for storage
